@@ -1,0 +1,8 @@
+﻿Day6p : can't figure out the parser for the grammar : 
+P = many L \n\n
+L = string \n
+
+Day7p : how to write a parser for "shiny gold bags" that doesn't rely on shiny gold being exactly two words?
+
+Day8 : use State monad to run the executions? 
+Day8 : use Vector to represent program (with mutation)
