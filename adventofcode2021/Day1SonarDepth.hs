@@ -1,22 +1,23 @@
-{-# LANGUAGE ViewPatterns #-} 
-{-# LANGUAGE BangPatterns #-} 
+import qualified Helper as H
 
-import Control.Applicative
+import Text.Parsec
 import Text.Parsec.Char
 import Text.Parsec.Combinator
 import Text.Parsec.String
-import Helper
 
+-- Boilerplate
 dataPath = "data/Day1Data.txt"
-part1 = readAndParse dataPath p_all p1
-part2 = readAndParse dataPath p_all p2
+aoc_main = H.readAndParse dataPath p_all
+part1 = aoc_main p1
+part2 = aoc_main p2
 
+-- Input parsing
 p_all :: Parser [Int]
-p_all = endBy p_int newline
-p_int = read <$> many1 digit
+p_all = endBy H.p_int newline
 		
-p1 ds = length . filter (uncurry (<)) . zip ds $ (tail ds)
-	
-p2 ds@(a:b:c:d:_) = isIncr1 + (p2 . tail $ ds) where
-	isIncr1 = boolToInt $ (a+b+c) < (b+c+d) -- (This is a < d) but sticking to spec :o)
-p2 _ = 0
+-- Solution
+p1 :: [Int] -> Int
+p1 ds = H.countBy (uncurry (<)) . zip ds $ (drop 1 ds)
+
+p2 :: [Int] -> Int
+p2 ds = H.countBy (uncurry (<)) . zip ds $ (drop 3 ds)
