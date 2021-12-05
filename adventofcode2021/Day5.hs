@@ -36,7 +36,7 @@ type CMap = M.Map Coord Int -- Maps coordinates to the number of time they're to
 
 -- There's only one function for part1 and part2, this "config" constant
 -- toggles whether diagonals are ignored or counted
-part2 = False
+part2 = True
 
 -- Solving function
 -- Build a map of all coordinates and the number of times they're touched
@@ -67,3 +67,12 @@ r' x y
   | x > y = [x,x-1..y]
   | otherwise = [x..y]
   
+
+-- Using a List instead of Map
+-- This is actually much faster (about 60%) and simpler :clown:
+solve2 = aoc_main countOverlapsList
+
+countOverlapsList coords = let touches = concatMap touch2 coords in
+	H.countBy ((>1).length) . group . sort $ touches
+
+touch2 = uncurry interpolate
