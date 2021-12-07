@@ -26,10 +26,10 @@ initDat dat = map fromIntegral [H.countBy (==x) dat | x <-[0..8]]
 -- All others shift down one stage.
 step [a,b,c,d,e,f,g,h,i] = [b,c,d,e,f,g,h+a,i,a]
 
--- Infinite list of recursive steps
+-- Infinite list of generations
 stepR x = x:(stepR (step x))
 
--- To solve either parts, take the K-th generation of the infinite list of steps and sum
+-- To solve either parts, take the K-th generation and sum
 p1 :: [Int] -> Integer
 p1 = sum . (!!80) . stepR . initDat
 
