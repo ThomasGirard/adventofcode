@@ -14,9 +14,11 @@ part2 = aoc_main p2
 -- Input parsing
 p_all = sepBy H.p_int (char ',')
 
-p1 :: [Int] -> Int
-p1 crabs = minimum [sum . map (cost1 x) $ crabs | x <- [0..maximum crabs]]
-cost1 x y = abs $ x - y
+optimize costFun crabs = minimum [sum . map (costFun x) $ crabs | x <- [0..maximum crabs]]
 
-p2 crabs = minimum [sum . map (cost2 x) $ crabs | x <- [0..maximum crabs]]
-cost2 x y = let n = abs $ x - y in (n * (n+1)) `div` 2
+p1 = optimize linear
+linear x y = abs $ x - y
+
+p2 = optimize quadratic
+quadratic x y = let n = abs $ x - y in (n * (n+1)) `div` 2
+
