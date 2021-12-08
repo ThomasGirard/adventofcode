@@ -21,4 +21,3 @@ linear x y = abs $ x - y
 
 p2 = optimize quadratic
 quadratic x y = let n = abs $ x - y in (n * (n+1)) `div` 2
-
