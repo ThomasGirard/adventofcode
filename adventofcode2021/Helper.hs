@@ -4,10 +4,16 @@ module Helper (
 	, countBy
 	, p_int
 	, sortOn
+	, findIndexJust
+	, none
 	) where
 
-import Data.List
+import Prelude hiding (map, sum, all, any, concatMap, foldr, mapM_, and)
+import Data.Foldable
+
+import Data.List hiding (any)
 import Data.Ord
+import Data.Maybe
 
 import Text.Parsec
 import Text.Parsec.Char
@@ -49,3 +55,8 @@ boolToInt False = 0
 sortOn :: Ord b => (a -> b) -> [a] -> [a]
 sortOn f =
   map snd . sortBy (comparing fst) . map (\x -> let y = f x in y `seq` (y, x))
+  
+-- Exists in newer Safe
+findIndexJust op = fromJust . findIndex op
+
+none f = not . any f
