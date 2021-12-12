@@ -10,7 +10,6 @@ import Text.Parsec.String
 import Control.Applicative
 
 import Data.Char
-import Data.Maybe
 import Data.List ((\\), elemIndices, intersperse, group, sort)
 
 -- Boilerplate
@@ -42,13 +41,14 @@ mkCave s = error $ "Mixed case name " ++ s
 p1 = solve False
 p2 = solve True
 
-solve isPart2 edges = length . fromJust $ paths [] (Small "start") where
+solve isPart2 edges = length $ paths [Small "start"] where
 	
-	paths :: Path -> Cave -> Maybe [Path]
-	paths visited c 
-		| isEnd c = Just [c : visited]
-		| canVisit visited c = Just . concat . mapMaybe (paths (c : visited)) . neighbors $ c
-		| otherwise = Nothing
+	paths :: Path -> [Path]
+	paths visited@(c:_) 
+		| isEnd c = [visited]
+		| otherwise = concatMap (\x -> paths $ x:visited) -- Recurse for each new subpath
+			. filter (canVisit visited) -- Only consider valid neighbors
+			. neighbors $ c -- Neighbors of the last visited cave
 		
 	neighbors :: Cave -> [Cave]
 	neighbors c = (map fst . filter ((==c).snd) $ edges) ++
