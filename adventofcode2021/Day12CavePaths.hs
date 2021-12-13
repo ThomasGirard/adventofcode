@@ -1,6 +1,3 @@
-import Prelude hiding (sum, all, any, concat, concatMap, foldr, mapM_, and, elem)
-import Data.Foldable
-
 import qualified Helper as H
 
 import Text.Parsec

@@ -51,8 +51,8 @@ digitsToInt = foldl' (\n d -> n * 10 + d) 0
 -- deduced by frequency, the others can be deduced by successive exclusion in specific digits.
 makeMapping :: [String] -> [(Char, Char)]
 makeMapping xs = [(t,'T'),(l,'L'),(r,'R'),(m,'M'),(a,'A'),(z,'Z'),(b,'B')] where
-	byFrequency = map head . H.sortOn length . group . sort . join $ xs 
-	byLength = H.sortOn length xs
+	byFrequency = map head . sortOn length . group . sort . join $ xs 
+	byLength = sortOn length xs
 	a = byFrequency !! 0
 	l = byFrequency !! 1
 	z = last byFrequency

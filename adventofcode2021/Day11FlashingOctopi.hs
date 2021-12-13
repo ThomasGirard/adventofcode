@@ -1,6 +1,3 @@
-import Prelude hiding (map, sum, all, any, concatMap, foldr, mapM_, and)
-import Data.Foldable
-
 import qualified Helper as H
 
 import Text.Parsec
@@ -12,6 +9,7 @@ import Control.Applicative
 import Data.Char
 import Data.List ((\\))
 import qualified Data.Map.Strict as M
+import Safe
 
 -- Boilerplate
 dataPath = "data/Day11Data.txt"
@@ -76,4 +74,4 @@ flash = until (H.none isFlashing) flash' where
 neighbors8 (r,c) = [(r+dr, c+dc) | dr <- [-1..1], dc <- [-1..1]] \\ [(r,c)]
 
 -- Part 2
-p2 = succ . H.findIndexJust (all isFlashed) . steps . toMap 
+p2 = succ . findIndexJust (all isFlashed) . steps . toMap 
