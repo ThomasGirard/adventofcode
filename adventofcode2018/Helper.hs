@@ -3,7 +3,6 @@ module Helper (
 	, boolToInt
 	, countBy
 	, p_int
-	, sortOn
 	) where
 
 import Data.List
@@ -42,8 +41,3 @@ countBy p = length . filter p
 boolToInt :: Bool -> Int
 boolToInt True = 1
 boolToInt False = 0
-
--- https://hackage.haskell.org/package/base-4.16.0.0/docs/src/Data.OldList.html#sortOn
-sortOn :: Ord b => (a -> b) -> [a] -> [a]
-sortOn f =
-  map snd . sortBy (comparing fst) . map (\x -> let y = f x in y `seq` (y, x))
