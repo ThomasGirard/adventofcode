@@ -85,7 +85,7 @@ p2' t inpr (new:free) blocked w =
 	p2' t inpr' free' blocked (w-1) where
 	new' = case new of (c, d, []) -> (c, d+t, []) :: Task
 	free' = free \\ [new]
-	inpr' = H.sortOn taskDuration (new':inpr)
+	inpr' = sortOn taskDuration (new':inpr)
 
 -- TODO I think this would be simpler if blocked and free tasks were kept in a single queue
 -- The ordering can be maintained by sorting on the parents first (the empty list comes first).
@@ -95,6 +95,3 @@ p2' t inpr (new:free) blocked w =
 	
 refreshTasks :: Char -> [Task] -> ([Task], [Task])
 refreshTasks t = partition isFreeTask . sort . map (\(c, d, parents) -> (c, d, parents \\ [t]))
-
-
-
