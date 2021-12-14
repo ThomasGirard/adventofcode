@@ -2,6 +2,7 @@ module Helper (
 	  readAndParse 
 	, boolToInt
 	, countBy
+	, groupOn
 	, p_int
 	, none
 	) where
@@ -37,6 +38,11 @@ p_int = read <$> many1 digit
 ------------------------------
 -- Misc utilities
 ------------------------------
+
+-- Exists in Data.List.Extra
+groupOn f = groupBy ((==) `on2` f)
+    -- redefine on so we avoid duplicate computation for most values.
+    where (.*.) `on2` f = \x -> let fx = f x in \y -> fx .*. f y
 
 -- Exists in newer GHC.Utils.Misc
 countBy :: (a -> Bool) -> [a] -> Int
