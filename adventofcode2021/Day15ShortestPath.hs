@@ -30,24 +30,18 @@ p_all = endBy (fmap digitToInt <$> many1 digit) newline
 -- Part1
 
 type Coord = (Int, Int)
-data Node = Node {
-	nRisk :: Int,
-	nCoord :: Coord
-	} deriving (Eq, Show)
+type Node = (Int, Coord) -- (Risk, Coord)
 type RiskMap = M.Map Coord Int
 type NodeMap = M.Map Coord Node -- Current best known path to each Coord
 type NodeHeap = MH.MinHeap Node
-	
-instance Ord Node where
-	compare = compare `on` nRisk
-	(<=) = (<=) `on` nRisk
 
 p1 = solve 1
--- Old (418.81 secs, 92,371,967,056 bytes)
--- New ( 22.30 secs,  5,407,613,872 bytes)
+-- PartialPath 	(418.81 secs, 92,371,967,056 bytes)
+-- Node 		( 22.30 secs,  5,407,613,872 bytes)
+-- Pair			( 11.92 secs,  3,684,935,872 bytes)
 p2 = solve 5
 
-solve scaleFactor grid = nRisk $ shortestPath rmScaled (0,0) end where 
+solve scaleFactor grid = fst $ shortestPath rmScaled (0,0) end where 
 	rm = H.gridToMap grid
 	rmScaled = scaleGrid scaleFactor rm
 	end = maximum . M.keys $ rmScaled
@@ -61,34 +55,22 @@ transposeGrid rm (m,n) = M.map updateVal . M.mapKeys (\(x,y) -> (m*(w+1) + x, n*
 -- Djikstra
 -- An old version used A* but the only reasonable heuristic in this case doesn't improve performance.
 shortestPath :: RiskMap -> Coord -> Coord -> Node
-shortestPath rm start end = go M.empty . MH.singleton . startNode $ start where
+shortestPath rm start end = go M.empty . MH.singleton $ (0, start) where
 
 	go :: NodeMap -- Current best known Node for each Coord
 		-> NodeHeap -- Next Nodes to explore
 		-> Node -- Optimal path to end
 	go nm nh | MH.null nh = error "No path found"
-	go nm (MH.view -> Just (node, nh)) = if isEnd node then node else
-		case fmap nRisk . (nm M.!?) . nCoord $ node of
+	go nm (MH.view -> Just (node@(risk, coord), nh)) = if isEnd node then node else
+		case fmap fst . (nm M.!?) $ coord of
 			-- New node isn't better, ignore it
-			Just knownRisk | knownRisk <= (nRisk node) -> go nm nh 
+			Just knownRisk | knownRisk <= risk -> go nm nh 
 			-- Coordinate hasn't been visited yet, or the new Node has lower risk, use it
 			otherwise -> go nm' nh' where
-				nm' = M.insert (nCoord node) node nm
+				nm' = M.insert coord node nm
 				nh' = (MH.union nh (MH.fromList $ nextNodes node))
 				
 	nextNodes :: Node -> [Node]
-	nextNodes node = [mkNode risk next | next <- H.neighbors4 curr , M.member next rm] where
-		risk = nRisk node
-		curr = nCoord node
+	nextNodes (risk, curr) = [(risk + (rm M.! next), next) | next <- H.neighbors4 curr , M.member next rm] 
 	
-	isEnd = (==end) . nCoord
-	
-	startNode coord = Node {
-		nRisk = 0,
-		nCoord = coord
-		}
-		
-	mkNode r curr = Node {
-		nRisk = r + (rm M.! curr),
-		nCoord = curr
-		}
+	isEnd = (==end) . snd
