@@ -23,8 +23,6 @@ aoc_main = H.readAndParse dataPath p_all
 part1 = aoc_main p1
 part2 = aoc_main p2
 
-main = part1
-
 -- Input parsing
 p_all :: Parser [[Int]]
 p_all = endBy (fmap digitToInt <$> many1 digit) newline
@@ -32,69 +30,65 @@ p_all = endBy (fmap digitToInt <$> many1 digit) newline
 -- Part1
 
 type Coord = (Int, Int)
+data Node = Node {
+	nRisk :: Int,
+	nCoord :: Coord
+	} deriving (Eq, Show)
 type RiskMap = M.Map Coord Int
--- For each coord, the current best-known path from start to that coord and its risk value
-type PathMap = M.Map Coord PartialPath
-data PartialPath = PartialPath {
-	ppRisk :: Int,
-	ppHeur :: Int,
-	ppPath :: [Coord]}
-	deriving (Eq, Show)
-type PathHeap = MH.MinHeap PartialPath
+type NodeMap = M.Map Coord Node -- Current best known path to each Coord
+type NodeHeap = MH.MinHeap Node
 	
-fScore partial = (ppHeur partial) + (ppRisk partial)
-ppHead = head . ppPath
-ppCost partial = ppRisk partial + ppHeur partial
-	
-instance Ord PartialPath where
-	compare = compare `on` fScore
-	(<=) = (<=) `on` fScore
+instance Ord Node where
+	compare = compare `on` nRisk
+	(<=) = (<=) `on` nRisk
 
--- (3.62 secs, 1,043,237,992 bytes)
 p1 = solve 1
--- (418.81 secs, 92,371,967,056 bytes)
+-- Old (418.81 secs, 92,371,967,056 bytes)
+-- New ( 22.30 secs,  5,407,613,872 bytes)
 p2 = solve 5
 
-solve scaleFactor grid = ppRisk $ shortestPath rmScaled (0,0) end where 
+solve scaleFactor grid = nRisk $ shortestPath rmScaled (0,0) end where 
 	rm = H.gridToMap grid
 	rmScaled = scaleGrid scaleFactor rm
 	end = maximum . M.keys $ rmScaled
 	
 scaleGrid :: Int -> RiskMap -> RiskMap
-scaleGrid n rm = foldr M.union M.empty . map (scale1 rm) $ [(x,y) | x<-[0..n-1], y<-[0..n-1]]  
-scale1 rm (m,n) = M.map dv . M.mapKeys (\(x,y) -> (m*(w+1) + x, n*(h+1) + y)) $ rm where
-	dv v = ((v + m + n - 1) `mod` 9) + 1
+scaleGrid n rm = foldr M.union M.empty . map (transposeGrid rm) $ [(x,y) | x<-[0..n-1], y<-[0..n-1]]
+transposeGrid rm (m,n) = M.map updateVal . M.mapKeys (\(x,y) -> (m*(w+1) + x, n*(h+1) + y)) $ rm where
 	(w,h) = maximum . M.keys $ rm
+	updateVal v = ((v + m + n - 1) `mod` 9) + 1
 
--- This is a weirdly implemented A* that is suboptimal.
--- Among other things
--- * The algorithm should be tracking nodes, not paths.
--- * Risk shouldn't be fully re-computed for each new PartialPath
-shortestPath :: RiskMap -> Coord -> Coord -> PartialPath
-shortestPath rm start end = go M.empty $ MH.singleton . mkPartial $ [start] where
+-- Djikstra
+-- An old version used A* but the only reasonable heuristic in this case doesn't improve performance.
+shortestPath :: RiskMap -> Coord -> Coord -> Node
+shortestPath rm start end = go M.empty . MH.singleton . startNode $ start where
 
-	go :: PathMap -- Current best known subpaths to visited coords
-		-> PathHeap -- Next subpaths to explore
-		-> PartialPath -- Optimal path to end
-	go pm mh | MH.null mh = error "No path found"
-	go pm (MH.view -> Just (partial, mh)) = if isEnd partial then partial else
-		case fmap ppRisk . (pm M.!?) . ppHead $ partial of 
-			Just knownRisk | knownRisk <= (ppRisk partial) -> go pm mh -- New path isn't better, ignore it
-			-- There's either no known subpath or it's worst, replace it
-			otherwise -> go pm' mh' where
-				pm' = M.insert (ppHead partial) partial pm
-				mh' = (MH.union mh (MH.fromList $ nextPaths partial))
+	go :: NodeMap -- Current best known Node for each Coord
+		-> NodeHeap -- Next Nodes to explore
+		-> Node -- Optimal path to end
+	go nm nh | MH.null nh = error "No path found"
+	go nm (MH.view -> Just (node, nh)) = if isEnd node then node else
+		case fmap nRisk . (nm M.!?) . nCoord $ node of
+			-- New node isn't better, ignore it
+			Just knownRisk | knownRisk <= (nRisk node) -> go nm nh 
+			-- Coordinate hasn't been visited yet, or the new Node has lower risk, use it
+			otherwise -> go nm' nh' where
+				nm' = M.insert (nCoord node) node nm
+				nh' = (MH.union nh (MH.fromList $ nextNodes node))
 				
-	nextPaths :: PartialPath -> [PartialPath]
-	nextPaths (ppPath -> (c:cs)) = [mkPartial (c':c:cs) | c' <- H.neighbors4 c , M.member c' rm]
+	nextNodes :: Node -> [Node]
+	nextNodes node = [mkNode risk next | next <- H.neighbors4 curr , M.member next rm] where
+		risk = nRisk node
+		curr = nCoord node
 	
-	heuristic c = (manhattan c end)
-	isEnd = (==end) . ppHead
+	isEnd = (==end) . nCoord
 	
-	mkPartial cs = PartialPath {
-			ppRisk = sum . map (rm M.!) . init $ cs,
-			ppHeur = heuristic . head $ cs,
-			ppPath = cs
+	startNode coord = Node {
+		nRisk = 0,
+		nCoord = coord
 		}
 		
-manhattan (x,y) (x',y') = abs (x - x') + abs (y - y')
+	mkNode r curr = Node {
+		nRisk = r + (rm M.! curr),
+		nCoord = curr
+		}
