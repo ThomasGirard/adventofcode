@@ -9,6 +9,8 @@ module Helper (
 	, mapToGrid
 	, neighbors4
 	, neighbors8
+	, maximumOn
+	, minimumOn
 	) where
 
 import Prelude 
@@ -75,4 +77,32 @@ mapToGrid mm =
 neighbors4 (r,c) = [(r, c-1), (r, c+1), (r-1, c), (r+1, c)] 
 neighbors8 (r,c) = [(r+dr, c+dc) | dr <- [-1..1], dc <- [-1..1]] \\ [(r,c)]
 
+-- | A version of 'maximum' where the comparison is done on some extracted value.
+--   Raises an error if the list is empty. Only calls the function once per element.
+--
+-- > maximumOn id [] == undefined
+-- > maximumOn length ["test","extra","a"] == "extra"
+maximumOn :: (Ord b) => (a -> b) -> [a] -> a
+maximumOn f [] = error "Data.List.Extra.maximumOn: empty list"
+maximumOn f (x:xs) = g x (f x) xs
+    where
+        g v mv [] = v
+        g v mv (x:xs) | mx > mv = g x mx xs
+                      | otherwise = g v mv xs
+            where mx = f x
+
+
+-- | A version of 'minimum' where the comparison is done on some extracted value.
+--   Raises an error if the list is empty. Only calls the function once per element.
+--
+-- > minimumOn id [] == undefined
+-- > minimumOn length ["test","extra","a"] == "a"
+minimumOn :: (Ord b) => (a -> b) -> [a] -> a
+minimumOn f [] = error "Data.List.Extra.minimumOn: empty list"
+minimumOn f (x:xs) = g x (f x) xs
+    where
+        g v mv [] = v
+        g v mv (x:xs) | mx < mv = g x mx xs
+                      | otherwise = g v mv xs
+            where mx = f x
 		

@@ -8,10 +8,14 @@ import Text.Parsec.Combinator
 import Text.Parsec.String
 import Data.Function ((&), on)
 
+import qualified Data.Map.Strict as M
+
 import Data.Char
 import Data.List
 import Safe
 import Debug.Trace
+
+import Control.Monad.Trans.State
 
 -- Boilerplate
 dataPath = "data/Day16Data.txt"
