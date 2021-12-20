@@ -4,6 +4,7 @@ module Helper (
 	, countBy
 	, groupOn
 	, p_int
+	, p_sint
 	, none
 	, gridToMap
 	, mapToGrid
@@ -24,8 +25,6 @@ import Text.Parsec.Char
 import Text.Parsec.Combinator
 import Text.Parsec.String
 
-import Control.Applicative
-
 import qualified Data.Map.Strict as M
 
 ------------------------------
@@ -42,6 +41,14 @@ readAndParse path parser callback = do
 ------------------------------
 p_int :: Parser Int
 p_int = read <$> many1 digit
+
+p_sint :: Parser Int
+p_sint = do
+	sign <- choice [
+		negate <$ char '-',
+		id <$ optional (char '+')
+		]
+	sign . read <$> many1 digit
 
 ------------------------------
 -- Misc utilities
