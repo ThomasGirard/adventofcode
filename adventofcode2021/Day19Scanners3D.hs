@@ -18,8 +18,6 @@ import Safe
 import Debug.Trace
 import Data.Maybe
 
-import System.IO.Unsafe
-
 -- Boilerplate
 dataPath = "data/Day19Data.txt"
 aoc_main = H.readAndParse dataPath p_all
@@ -35,125 +33,146 @@ p_scanner = do
 	scannerNo <- H.p_int 
 	string " ---"
 	newline
-	measures <- endBy1 (try p_measure) newline
+	measures <- endBy1 p_measure newline
 	return (scannerNo, measures)
 
 p_measure = sepBy1 H.p_sint (char ',') 
 
 type Measure = [Int] 
 type Measures = [Measure]
-type Scanner = (Int, [Measure])
-sID (s, _) = s
+type Scanner = (Int, Measures)
 
+-- Dealing with orientations of Measures
 type Orientation = (Facing, Rotation)
 data Facing = Xp | Xn | Yp | Yn | Zp | Zn deriving (Eq, Ord, Show)
 data Rotation = Rot0 | Rot90 | Rot180 | Rot270 deriving (Eq, Ord, Show)
 
--- Dealing with orientations of Measures
-allOrientations = [(f, r) | f <- [Xp, Xn, Yp, Yn, Zp, Zn], r <- [Rot0, Rot90, Rot180, Rot270]]
+allOrientations = [
+	(f, r) 
+	| f <- [Xp, Xn, Yp, Yn, Zp, Zn]
+	, r <- [Rot0, Rot90, Rot180, Rot270]
+	]
+orient :: Measures -> Orientation -> Measures
+orient ms or = map (orient1 or) ms where
+	orient1 (Xp, Rot0  ) [x,y,z] = [ x, y, z]
+	orient1 (Xp, Rot90 ) [x,y,z] = [ x, z,-y]
+	orient1 (Xp, Rot180) [x,y,z] = [ x,-y,-z]
+	orient1 (Xp, Rot270) [x,y,z] = [ x,-z, y]
+	orient1 (Xn, Rot0  ) [x,y,z] = [-x, y,-z]
+	orient1 (Xn, Rot90 ) [x,y,z] = [-x,-z,-y]
+	orient1 (Xn, Rot180) [x,y,z] = [-x,-y, z]
+	orient1 (Xn, Rot270) [x,y,z] = [-x, z, y]
+	orient1 (Yp, Rot0  ) [x,y,z] = [ y,-x, z]
+	orient1 (Yp, Rot90 ) [x,y,z] = [ y, z, x]
+	orient1 (Yp, Rot180) [x,y,z] = [ y, x,-z]
+	orient1 (Yp, Rot270) [x,y,z] = [ y,-z,-x]
+	orient1 (Yn, Rot0  ) [x,y,z] = [-y, x, z]
+	orient1 (Yn, Rot90 ) [x,y,z] = [-y, z,-x]
+	orient1 (Yn, Rot180) [x,y,z] = [-y,-x,-z]
+	orient1 (Yn, Rot270) [x,y,z] = [-y,-z, x]
+	orient1 (Zp, Rot0  ) [x,y,z] = [ z, y,-x]
+	orient1 (Zp, Rot90 ) [x,y,z] = [ z,-x,-y]
+	orient1 (Zp, Rot180) [x,y,z] = [ z,-y, x]
+	orient1 (Zp, Rot270) [x,y,z] = [ z, x, y]
+	orient1 (Zn, Rot0  ) [x,y,z] = [-z, y, x]
+	orient1 (Zn, Rot90 ) [x,y,z] = [-z, x,-y]
+	orient1 (Zn, Rot180) [x,y,z] = [-z,-y,-x]
+	orient1 (Zn, Rot270) [x,y,z] = [-z,-x, y]
 
-orientationsOf :: Measures -> [(Orientation, Measures)]
-orientationsOf ms = map (\o -> (o, orient ms o)) allOrientations
+-- An assembled scanner with 
+-- * Its number (same as the source scanner)
+-- * Translated and oriented coordinates, aligned to the scanner at (0,0)
+-- * The translation vector from (0,0)
+type Assembled = (Int, Measures, [Int])
 
-o1 = nub . sort $ map ((flip orient1) [1,2,3]) allOrientations
-
-inverse :: Orientation -> Orientation
-inverse o = head $ filter (\o' -> (==[1,2,3]) . orient1 o' . orient1 o $ [1,2,3]) allOrientations
-
-orient ms or = map (orient1 or) ms
-orient1 (Xp, Rot0  ) [x,y,z] = [ x, y, z]
-orient1 (Xp, Rot90 ) [x,y,z] = [ x, z,-y]
-orient1 (Xp, Rot180) [x,y,z] = [ x,-y,-z]
-orient1 (Xp, Rot270) [x,y,z] = [ x,-z, y]
-
-orient1 (Xn, Rot0  ) [x,y,z] = [-x, y,-z]
-orient1 (Xn, Rot90 ) [x,y,z] = [-x,-z,-y]
-orient1 (Xn, Rot180) [x,y,z] = [-x,-y, z]
-orient1 (Xn, Rot270) [x,y,z] = [-x, z, y]
-
-orient1 (Yp, Rot0  ) [x,y,z] = [ y,-x, z]
-orient1 (Yp, Rot90 ) [x,y,z] = [ y, z, x]
-orient1 (Yp, Rot180) [x,y,z] = [ y, x,-z]
-orient1 (Yp, Rot270) [x,y,z] = [ y,-z,-x]
-
-orient1 (Yn, Rot0  ) [x,y,z] = [-y, x, z]
-orient1 (Yn, Rot90 ) [x,y,z] = [-y, z,-x]
-orient1 (Yn, Rot180) [x,y,z] = [-y,-x,-z]
-orient1 (Yn, Rot270) [x,y,z] = [-y,-z, x]
-
-orient1 (Zp, Rot0  ) [x,y,z] = [ z, y,-x]
-orient1 (Zp, Rot90 ) [x,y,z] = [ z,-x,-y]
-orient1 (Zp, Rot180) [x,y,z] = [ z,-y, x]
-orient1 (Zp, Rot270) [x,y,z] = [ z, x, y]
-
-orient1 (Zn, Rot0  ) [x,y,z] = [-z, y, x]
-orient1 (Zn, Rot90 ) [x,y,z] = [-z, x,-y]
-orient1 (Zn, Rot180) [x,y,z] = [-z,-y,-x]
-orient1 (Zn, Rot270) [x,y,z] = [-z,-x, y]
-
--- An assembled scanner with
--- Its parent, and the Orientation relative to its parent
--- The Scanner instance is aligned to s0
-type Assembled = (Scanner, Maybe Int, Orientation, [Int])
-
+-- Base : 
+-- Improved : (125.30 secs, 13,571,682,864 bytes)
 p1 :: [Scanner] -> Int
-p1 (s0:scans) = length . nub . sort . concatMap (\((_,m),_,_,_) -> m) $ assemble [initAssembled s0] scans
+p1 scanners = 
+	assembleAll scanners
+	& concatMap (\(_,m,_) -> m)
+	& sort
+	& nub
+	& length
 
-p2 (s0:scans) = let
-	scanPos = map (\(_,_,_,v) -> v) $ assemble [initAssembled s0] scans
-	in maximum [manhattanDist s t | s <- scanPos, t <- scanPos]
+assembleAll (s0:scans) = assemble [initAssembled s0] scans where
+	initAssembled (n, m) = (n, m, [0,0,0])
 
-manhattanDist :: [Int] -> [Int] -> Int	
-manhattanDist x y = sum $ zipWith (\a b -> abs (a-b)) x y
-
-initAssembled s@(_, m) = (s, Nothing, (Xp, Rot0), [0,0,0])
+p2 scanners = maximum [manhattanDist s t | s <- sPositions, t <- sPositions] where
+	sPositions = map (\(_,_,v) -> v) . assembleAll $ scanners
+	manhattanDist x y = sum $ zipWith (\a b -> abs (a-b)) x y
 
 assemble :: [Assembled] -> [Scanner] -> [Assembled]
 assemble done [] = done
-assemble done ((s@(sName,_)):next) = case assembleNext done s of
+assemble done (s:next) = case assembleNext done s of
 	Just a' -> assemble (a':done) next
 	Nothing -> assemble done (next ++ [s])
 
+-- Try matching a Scanner with any already Assembled scan.
+-- Multiple matches may occur, any of them can be used.
 assembleNext :: [Assembled] -> Scanner -> Maybe Assembled	
-assembleNext refs s = listToMaybe $ mapMaybe (\(sRef, _, _, _) -> orientAndMatch sRef s) refs
-	
-orientAndMatch :: Scanner -> Scanner -> Maybe Assembled
-orientAndMatch (s0name, m0) (s1name, m1) 
-	= listToMaybe . mapMaybe tryOrient . orientationsOf $ m1 where
-		tryOrient (o, mOriented) = case matchCoords m0 mOriented of
-			Just _ -> Just ((s0name, translated), Just s0name, o, v) where
-				(v, translated) = translate m0 mOriented
-			Nothing -> Nothing
+assembleNext ass s = listToMaybe $ mapMaybe (flip orientAndMatch $ s) ass
+
+-- Try matching a Scanner with an already Assembled scan.
+-- This and children functions are the bottleneck
+-- measuresMatch is re-computed for every attempted match, many of which are needlessly repeated often.
+orientAndMatch :: Assembled -> Scanner -> Maybe Assembled
+orientAndMatch (_, m0, _) (s1name, m1) 
+	= listToMaybe . mapMaybe tryOrient . orientationsOf $ m1 
+	where
+	tryOrient mOriented = case measuresMatch m0 mOriented of
+		Nothing -> Nothing
+		Just p -> Just (s1name, translated, v) where
+			(v, translated) = translate p m0 mOriented 
 		
--- Given reference measures (m0) and m1, aligned but not translated
--- translate the measures m1 and return them
-translate :: Measures -> Measures -> ([Int], Measures)
-translate m0 m1 = 
+-- All the possible orientations of the given Measures.
+orientationsOf :: Measures -> [Measures]
+orientationsOf ms = map (orient ms) allOrientations
+
+-- Given two Measures, return True iff there is 
+-- at least 12 overlapping coordinates between them (ignoring translations).
+-- To do so : 
+-- 1) For each point in each set, compute the list of distances between this point and others
+-- 	  in the set. 
+-- 2) Compare these vector lists from one set to the other. Any list that matches at least 
+--    12 items in the other scan is a valid point.
+-- 3) If there are 12 or more such lists, then a clique of 12 matching points is found, and 
+--    measurements are a match.
+-- One of the matching points is returned on match.
+-- This works because the vectors are translation independant.
+type Point = [Int]
+type DistVec = [[Int]]
+
+measuresMatch :: Measures -> Measures -> Maybe Point
+measuresMatch s0 s1 = if M.size matchingPoints >= 12 
+	then Just . fst . M.elemAt 0 $ matchingPoints
+	else Nothing
+	where
+	refPoints = map snd $ distVectors s0
+	canPoints = M.fromList $ distVectors s1
+	matchingPoints = filterPoints refPoints canPoints
+	
+	distVectors :: Measures -> [(Point, DistVec)]
+	distVectors ms = [ (m1, [vectorDiff m1 m2 | m2 <- ms]) | m1 <- ms]
+	
+	filterPoints :: [DistVec] -> M.Map Point DistVec -> M.Map Point DistVec
+	filterPoints refVecs canVecs = 
+		M.filter (\distVec -> any (distancesMatch distVec) refVecs) canVecs where
+		distancesMatch :: DistVec -> DistVec -> Bool
+		distancesMatch pointCan pointRef = (>=12) . length $ intersect pointCan pointRef
+	
+-- Given reference measures m0 and m1, oriented but not translated,
+-- translate the measures m1 and return them along with the translation vector.
+-- refPoint is given as a point in m1 that is guaranteed to be matched in m0.
+translate :: Point -> Measures -> Measures -> ([Int], Measures)
+translate refPoint m0 m1 = 
 	head 
 	. filter (isGoodTranslation . snd)
 	. map (\v -> (v, translateM m1 v))
-	$ [dist p0 p1 | p0 <- sort m0, p1 <- sort m1] where
+	$ [vectorDiff p0 refPoint | p0 <- m0] where
 		isGoodTranslation = (>=12) . length . (intersect m0)
-
-translateM m [dx,dy,dz] = map (\[x,y,z] -> [x+dx, y+dy, z+dz]) m
+		translateM m v = map (zipWith (+) v) m
 		
-matchCoords :: Measures -> Measures -> Maybe Int
-matchCoords s0 s1 = let
-	vect0 = distVectors s0
-	vect1 = distVectors s1
-	vect1' = keep12 vect0 vect1
-	in if M.size vect1' >= 12 
-		then Just (length s1 - M.size vect1')
-		else Nothing
 		
-type Dist = [Int]
-
--- Keep only the vectors of the second map that match at least 12 distances in one or more vectors of the first map
-keep12 ref v1 = M.filter vHasMatch v1 where
-	vHasMatch candidate = any (vvMatches candidate) (M.elems ref)
-vvMatches :: (M.Map Measure Dist) -> (M.Map Measure Dist) -> Bool
-vvMatches candidate target = (>=12) . length $ intersect (M.elems candidate) (M.elems target)
-
-distVectors ms = M.fromList [ (m1, M.fromList [(m2, dist m1 m2) | m2 <- ms]) | m1 <- ms]
-	
-dist = zipWith (-)
+vectorDiff :: [Int] -> [Int] -> [Int]
+vectorDiff = zipWith (-)
