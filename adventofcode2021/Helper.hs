@@ -8,10 +8,12 @@ module Helper (
 	, none
 	, gridToMap
 	, mapToGrid
+	, mapToGridSparse
 	, neighbors4
 	, neighbors8
 	, maximumOn
 	, minimumOn
+	, bitsToInt
 	) where
 
 import Prelude 
@@ -80,6 +82,14 @@ mapToGrid mm =
 	[[mm M.! (r,c) | c <- [0..maxC] ] | r <- [0..maxR]] where
 		maxR = maximum . map fst . M.keys $ mm 
 		maxC = maximum . map snd . M.keys $ mm 
+		
+mapToGridSparse :: a -> M.Map (Int, Int) a -> [[a]]
+mapToGridSparse def mm = 
+	[[M.findWithDefault def (r,c) mm | c <- [minC..maxC] ] | r <- [minR..maxR]] where
+		maxR = maximum . map fst . M.keys $ mm 
+		maxC = maximum . map snd . M.keys $ mm 
+		minR = minimum . map fst . M.keys $ mm 
+		minC = minimum . map snd . M.keys $ mm 		
 	
 neighbors4 (r,c) = [(r, c-1), (r, c+1), (r-1, c), (r+1, c)] 
 neighbors8 (r,c) = [(r+dr, c+dc) | dr <- [-1..1], dc <- [-1..1]] \\ [(r,c)]
@@ -113,3 +123,5 @@ minimumOn f (x:xs) = g x (f x) xs
                       | otherwise = g v mv xs
             where mx = f x
 		
+bitsToInt :: [Int] -> Int 
+bitsToInt = foldl' (\n d -> n * 2 + d) 0
