@@ -2,7 +2,7 @@ module IntCode (
 	Val(..),
 	Adr(..),
 	Ptr(..),
-	ReadAdr(..),
+	RAdr(..),
 	execFully,
 	execSync,
 	initMem,
@@ -30,22 +30,31 @@ newtype Adr = Adr Int
 newtype Ptr = Ptr Int
 	deriving (Num, Ord, Eq, Show)
 	
+type Rel = Int
+	
 valAsPtr (Val v) = Ptr v
 ptrAsAdr (Ptr v) = Adr v
 valAsAdr (Val a) = Adr a
 valToInt (Val a) = a
 
-data ReadAdr = 
+data WAdr = 
+	  WPosition Adr
+	| WRelative Val
+	deriving (Ord, Eq, Show)
+
+data RAdr = 
 	  Position Adr
 	| Immediate Val
+	| Relative Val
 	deriving (Ord, Eq, Show)
 
 data Instr = 
 	  Halt 
-	| BinOp Op ReadAdr ReadAdr Adr
-	| Input Adr
-	| Output ReadAdr 
-	| JmpIf JmpOp ReadAdr ReadAdr
+	| BinOp Op RAdr RAdr WAdr
+	| Input WAdr
+	| Output RAdr 
+	| JmpIf JmpOp RAdr RAdr
+	| SetRel RAdr
 	deriving (Ord, Eq, Show)
 	
 data JmpOp = JmpIfTrue | JmpIfFalse 
@@ -76,20 +85,26 @@ decodeInstruction mem p = case code of
 	2 -> decodeBinOp Mul
 	7 -> decodeBinOp CmpLT
 	8 -> decodeBinOp CmpEQ
-	3 -> (Input (param 1), p+2)
+	3 -> (Input (decWrit mode1 1), p+2)
 	4 -> (Output (decRead mode1 1), p+2)
 	5 -> (JmpIf JmpIfTrue (decRead mode1 1) (decRead mode2 2), p+3)
 	6 -> (JmpIf JmpIfFalse (decRead mode1 1) (decRead mode2 2), p+3)
+	9 -> (SetRel (decRead mode1 1), p+2)
 	n -> error $ "Unknown opcode " ++ (show n)
 	where
 	(code, mode1, mode2, mode3) = decodeCode $ mem M.! q
-	param n = valAsAdr $ mem M.! (q+n)
 	q = ptrAsAdr p
-	decodeBinOp op = (BinOp op (decRead mode1 1) (decRead mode2 2) (param 3), p+4)
+	decodeBinOp op = (BinOp op (decRead mode1 1) (decRead mode2 2) (decWrit mode3 3), p+4)
+	
 	decRead DImm n = Immediate $ mem M.! (q+n)
 	decRead DPos n = Position $ valAsAdr $ mem M.! (q+n)
+	decRead DRel n = Relative $ mem M.! (q+n)
 
-data DecReadMode = DPos | DImm 	
+	decWrit DPos n = WPosition $ valAsAdr $ mem M.! (q+n)
+	decWrit DRel n = WRelative $ mem M.! (q+n)
+	decWrit DImm _ = error "Immediate writes are illegal"
+
+data DecReadMode = DPos | DImm | DRel	
 	deriving (Ord, Eq, Show)
 
 decodeCode (Val n) = (op, decMode c, decMode b, decMode a) where
@@ -98,6 +113,7 @@ decodeCode (Val n) = (op, decMode c, decMode b, decMode a) where
 	
 decMode '0' = DPos
 decMode '1' = DImm
+decMode '2' = DRel
 	
 leftPad c n s | length s >= n = s
 leftPad c n s | length s < n = leftPad c n (c:s)
@@ -113,19 +129,22 @@ exec1 vm = case decodeInstruction (vMem vm) (vPtr vm) of
 execInstr :: Instr -> VMState -> (ExecStatus, VMState)
 execInstr Halt vm = (Halted, vm {vStat = Halted})
 execInstr (Output a) vm = (HasOutput o, vm' {vStat = HasOutput o}) where
-	o = valToInt $ readOp a (vMem vm)
+	o = valToInt $ readOp a (vMem vm) (vRel vm)
 	vm' = vm {vOut = (vOut vm ++ [o])}
+execInstr (SetRel a) vm = (Cont, vm {vRel = rel'}) where
+	relChange = valToInt $ readOp a (vMem vm) (vRel vm)
+	rel' = (vRel vm) + relChange
 execInstr (JmpIf jm a b) vm = (Cont, vm {vPtr = ptr'}) where
 	ptr' = if (jmpFun jm) valA then valB else vPtr vm
 	mem = vMem vm
-	valA = readOp a mem
-	valB = valAsPtr $ readOp b mem
-
+	valA = readOp a mem (vRel vm)
+	valB = valAsPtr $ readOp b mem (vRel vm)
 execInstr instr vm = (Cont, vm') where
 	mem = vMem vm
+	rel = vRel vm
 	vm' = case instr of
 		BinOp op a b w -> 
-			vm {vMem = M.insert w (f (readOp a mem) (readOp b mem)) mem} where
+			vm {vMem = M.insert (writeOp w mem rel) (f (readOp a mem (vRel vm)) (readOp b mem (vRel vm))) mem} where
 			f = case op of
 				Add -> (+)
 				Mul -> (*)
@@ -134,16 +153,21 @@ execInstr instr vm = (Cont, vm') where
 		Input w -> case vTape vm of
 			[] -> error "Tried to read from empty tape"
 			(t:tape') -> vm {
-				vMem = M.insert w (Val t) mem,
+				vMem = M.insert (writeOp w mem rel) (Val t) mem,
 				vTape = tape'
 				}
 
 boolToInt True = 1
 boolToInt False = 0
 				
-readOp :: ReadAdr -> Mem -> Val
-readOp (Position adr) mem = mem M.! adr
-readOp (Immediate val) _ = val
+readOp :: RAdr -> Mem -> Rel -> Val
+readOp (Position adr) mem _ = mem M.! adr
+readOp (Relative (Val val)) mem rel = mem M.! (Adr $ val + rel)
+readOp (Immediate val) _ _ = val
+
+writeOp :: WAdr -> Mem -> Rel -> Adr
+writeOp (WPosition adr) _ _ = adr
+writeOp (WRelative (Val val)) _ rel = Adr $ val + rel
 
 type Output = [Int]
 type Tape = [Int]
@@ -155,6 +179,7 @@ data VMState = VMState {
 	vTape :: Tape,
 	vOut :: Output,
 	vPtr :: Ptr,
+	vRel :: Rel,
 	vStat :: ExecStatus
 } deriving (Ord, Eq, Show)
 
@@ -178,5 +203,6 @@ initVM mem = VMState {
 	vTape = [],
 	vOut = [],
 	vPtr = Ptr 0,
+	vRel = 0,
 	vStat = Cont
 }
