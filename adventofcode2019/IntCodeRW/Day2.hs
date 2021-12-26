@@ -16,7 +16,7 @@ execWith noun verb =
 	  initMem input 
 	& M.insert (Adr 1) (Val noun)
 	& M.insert (Adr 2) (Val verb)
-	& initVM
+	& initVM []
 	& execFully 
 	& vMem
 	& readOp (Position 0)

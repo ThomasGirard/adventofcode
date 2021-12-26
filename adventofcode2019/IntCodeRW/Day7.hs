@@ -21,8 +21,7 @@ part1 = maximum . map runPermutation . permutations $ [0..4] where
 	
 initAmp n = 
 	initMem input
-	& initVM
-	& appendTape n
+	& initVM [n]
 		
 appendTape extraTape vm = vm {vTape = vTape vm ++ [extraTape]}
 

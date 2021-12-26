@@ -9,15 +9,13 @@ import Debug.Trace (trace)
 
 part1 = 
 	initMem input
-	& initVM
-	& (\vm -> vm {vTape = [1]})
+	& initVM [1]
 	& execFully
 	& vOut
 	
 part2 = 
 	initMem input
-	& initVM
-	& (\vm -> vm {vTape = [2]})
+	& initVM [2]
 	& execFully
 	& vOut
 

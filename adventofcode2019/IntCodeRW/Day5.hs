@@ -7,8 +7,7 @@ import Data.Function ((&), on)
 
 execWithTape input tape = 
 	initMem input
-	& initVM
-	& (\vm -> vm {vTape = tape})
+	& initVM tape
 	& execFully
 	& vOut
 	& last
