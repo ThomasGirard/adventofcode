@@ -4,6 +4,7 @@ module IntCode (
 	Ptr(..),
 	ReadAdr(..),
 	execFully,
+	execSync,
 	initMem,
 	readOp,
 	VMState,
@@ -11,6 +12,7 @@ module IntCode (
 	vMem,
 	vTape,
 	vOut,
+	vStat,
 	ExecStatus(..),
 	decodeCode
 	) where
@@ -109,8 +111,8 @@ exec1 vm = case decodeInstruction (vMem vm) (vPtr vm) of
 	(instr, p') -> let (es, vm') = execInstr instr (vm {vPtr = p'}) in (es, vm')
 	
 execInstr :: Instr -> VMState -> (ExecStatus, VMState)
-execInstr Halt vm = (Halted, vm)
-execInstr (Output a) vm = (HasOutput o, vm') where
+execInstr Halt vm = (Halted, vm {vStat = Halted})
+execInstr (Output a) vm = (HasOutput o, vm' {vStat = HasOutput o}) where
 	o = valToInt $ readOp a (vMem vm)
 	vm' = vm {vOut = (vOut vm ++ [o])}
 execInstr (JmpIf jm a b) vm = (Cont, vm {vPtr = ptr'}) where
@@ -152,7 +154,8 @@ data VMState = VMState {
 	vMem :: Mem,
 	vTape :: Tape,
 	vOut :: Output,
-	vPtr :: Ptr
+	vPtr :: Ptr,
+	vStat :: ExecStatus
 } deriving (Ord, Eq, Show)
 
 execFully :: VMState -> VMState
@@ -160,7 +163,12 @@ execFully s = let (es, s') = exec1 s in case es of
 	Halted -> s'
 	HasOutput o -> execFully s'
 	Cont -> execFully s'
-	
+
+execSync :: VMState -> (VMState, Int)
+execSync s = let (es, s') = exec1 s in case es of
+	Halted -> (s', last . vOut $ s')
+	HasOutput o -> (s', o)
+	Cont -> execSync s'
 	
 initMem = M.fromList . zip [Adr 0..] . map Val
 	
@@ -169,5 +177,6 @@ initVM mem = VMState {
 	vMem = mem,
 	vTape = [],
 	vOut = [],
-	vPtr = Ptr 0
+	vPtr = Ptr 0,
+	vStat = Cont
 }
