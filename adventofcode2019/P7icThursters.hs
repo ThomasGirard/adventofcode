@@ -7,7 +7,6 @@ import Data.Maybe
 import Data.Bool
 import Text.Read (readMaybe)
 import Data.List
-import Data.List.Ordered
 import qualified Data.Set as S
 import qualified Data.IntMap as IM
 import Data.Bits

@@ -7,7 +7,6 @@ import Data.Maybe
 import Data.Bool
 import Text.Read (readMaybe)
 import Data.List
-import Data.List.Ordered
 import qualified Data.Set as S
 import qualified Data.IntMap as IM
 import Data.Bits
@@ -28,7 +27,7 @@ import Debug.Trace (trace)
 -- Parsing and IO
 
 textInput :: IO String
-textInput = readFile "data/7.txt"
+textInput = readFile "data/9.txt"
 
 unsafeInput :: [Integer]
 unsafeInput = unsafePerformIO $ main
@@ -204,7 +203,8 @@ bToInt True = 1
 bToInt False = 0
 
 
-part1 = getOutput . exec $ initState unsafeInput [1,1] 
+part1 = getOutput . exec $ initState unsafeInput [1] 
+part2 = getOutput . exec $ initState unsafeInput [2] 
 
 -- Testing
 

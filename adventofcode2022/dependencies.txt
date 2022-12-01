@@ -1,0 +1,5 @@
+Eventually this should be a cabal/stack project or something. 
+Current dependencies (installed with `cabal install --lib`) are : 
+	safe
+	split
+	parsec
