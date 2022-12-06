@@ -3,3 +3,4 @@ Current dependencies (installed with `cabal install --lib`) are :
 	safe
 	split
 	parsec
+	vector

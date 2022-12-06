@@ -3,6 +3,8 @@ module Helper (
 	, boolToInt
 	, countBy
 	, groupOn
+	, p_lines
+	, p_str
 	, p_int
 	, p_sint
 	, none
@@ -41,6 +43,12 @@ readAndParse path parser callback = do
 ------------------------------
 -- Parsers
 ------------------------------
+p_lines :: Parser [String]
+p_lines = endBy (many1 letter) newline
+
+p_str :: Parser String
+p_str = many1 letter
+
 p_int :: Parser Int
 p_int = read <$> many1 digit
 
